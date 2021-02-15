@@ -7,3 +7,4 @@ export type {
   Redis,
   RedisConnectOptions
 } from 'https://deno.land/x/redis@v0.14.1/mod.ts'
+export { secretbox } from 'https://esm.sh/@evan/wasm@0.0.15/target/nacl/deno.js'

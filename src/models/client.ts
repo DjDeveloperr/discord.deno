@@ -25,6 +25,7 @@ import { VoiceRegion } from '../types/voice.ts'
 import { fetchAuto } from '../../deps.ts'
 import { DMChannel } from '../structures/dmChannel.ts'
 import { Template } from '../structures/template.ts'
+import { VoiceConnectionsManager } from './voice.ts'
 
 /** OS related properties sent with Gateway Identify */
 export interface ClientProperties {
@@ -138,6 +139,8 @@ export class Client extends HarmonyEventEmitter<ClientEvents> {
   shards: ShardManager
   /** Collectors set */
   collectors: Set<Collector> = new Set()
+  /** Voice Connections Manager */
+  voices: VoiceConnectionsManager
 
   /** Since when is Client online (ready). */
   get uptime(): number {
@@ -163,6 +166,7 @@ export class Client extends HarmonyEventEmitter<ClientEvents> {
     this.token = options.token
     this.intents = options.intents
     this.shards = new ShardManager(this)
+    this.voices = new VoiceConnectionsManager(this)
     this.forceNewSession = options.forceNewSession
     if (options.cache !== undefined) this.cache = options.cache
     if (options.presence !== undefined)

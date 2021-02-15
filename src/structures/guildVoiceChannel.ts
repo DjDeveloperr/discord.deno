@@ -47,7 +47,7 @@ export class VoiceChannel extends Channel {
       let sessionID: string
       let done = 0
 
-      const onVoiceStateAdd = (state: VoiceState): void => {
+      const onVoiceStateAdd = async (state: VoiceState): Promise<void> => {
         if (state.user.id !== this.client.user?.id) return
         if (state.channel?.id !== this.id) return
         this.client.off('voiceStateAdd', onVoiceStateAdd)
@@ -55,19 +55,25 @@ export class VoiceChannel extends Channel {
         sessionID = state.sessionID
         if (done >= 2) {
           vcdata.sessionID = sessionID
-          if (options?.onlyJoin !== true) {
+          if (options?.onlyJoin === false) {
+            await this.client.voices.establish({ channel: this, data: vcdata })
           }
           resolve(vcdata)
         }
       }
 
-      const onVoiceServerUpdate = (data: VoiceServerUpdateData): void => {
+      const onVoiceServerUpdate = async (
+        data: VoiceServerUpdateData
+      ): Promise<void> => {
         if (data.guild.id !== this.guild.id) return
         vcdata = (data as unknown) as VoiceServerData
         this.client.off('voiceServerUpdate', onVoiceServerUpdate)
         done++
         if (done >= 2) {
           vcdata.sessionID = sessionID
+          if (options?.onlyJoin === false) {
+            await this.client.voices.establish({ channel: this, data: vcdata })
+          }
           resolve(vcdata)
         }
       }

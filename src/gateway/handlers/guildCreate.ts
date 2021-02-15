@@ -13,6 +13,9 @@ export const guildCreate: GatewayEventHandler = async (
 
   if (d.members !== undefined) await guild.members.fromPayload(d.members)
 
+  if (d.voice_states !== undefined)
+    await guild.voiceStates.fromPayload(d.voice_states)
+
   if (d.channels !== undefined) {
     for (const ch of d.channels as GuildChannelPayload[]) {
       ch.guild_id = d.id
@@ -23,9 +26,6 @@ export const guildCreate: GatewayEventHandler = async (
   await guild.roles.fromPayload(d.roles)
 
   if (d.presences !== undefined) await guild.presences.fromPayload(d.presences)
-
-  if (d.voice_states !== undefined)
-    await guild.voiceStates.fromPayload(d.voice_states)
 
   if (hasGuild === undefined) {
     // It wasn't lazy load, so emit event
