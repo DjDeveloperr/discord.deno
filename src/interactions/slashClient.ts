@@ -2,6 +2,7 @@ import {
   SlashCommandInteraction,
   InteractionApplicationCommandResolved
 } from '../structures/slash.ts'
+import { MessageComponentInteraction } from '../structures/messageComponents.ts'
 import { Interaction } from '../structures/interactions.ts'
 import {
   InteractionPayload,
@@ -294,7 +295,6 @@ export class SlashClient extends HarmonyEventEmitter<SlashClientEvents> {
       let res
       if (payload.type === InteractionType.APPLICATION_COMMAND) {
         res = new SlashCommandInteraction(this as any, payload, {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           user: new User(this as any, (payload.member?.user ?? payload.user)!),
           member: payload.member as any,
           guild: payload.guild_id as any,
@@ -307,9 +307,16 @@ export class SlashClient extends HarmonyEventEmitter<SlashClientEvents> {
             channels: {}
           }
         })
+      } else if (payload.type === InteractionType.MESSAGE_COMPONENT) {
+        res = new MessageComponentInteraction(this as any, payload, {
+          user: new User(this as any, (payload.member?.user ?? payload.user)!),
+          member: payload.member as any,
+          guild: payload.guild_id as any,
+          channel: payload.channel_id as any,
+          message: payload.message as any
+        })
       } else {
         res = new Interaction(this as any, payload, {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           user: new User(this as any, (payload.member?.user ?? payload.user)!),
           member: payload.member as any,
           guild: payload.guild_id as any,
