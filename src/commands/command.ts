@@ -74,6 +74,8 @@ export interface CommandOptions {
   ownerOnly?: boolean
   /** Sub Commands */
   subCommands?: CommandOptions[]
+  /** Command's Cooldown */
+  cooldown?: number | { duration: number; threshold?: number }
 }
 
 export class Command implements CommandOptions {
@@ -99,8 +101,12 @@ export class Command implements CommandOptions {
   dmOnly?: boolean
   ownerOnly?: boolean
   subCommands?: Command[]
+  cooldown?: number | { duration: number; threshold?: number }
 
   declare readonly _decoratedSubCommands?: Command[]
+
+  /** Method called when user didn't pass all required arguments */
+  onMissingArgs(ctx: CommandContext): any {}
 
   /** Method called when the command errors */
   onError(ctx: CommandContext, error: Error): any {}
