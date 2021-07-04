@@ -71,6 +71,8 @@ export class CommandClient extends Client implements CommandClientOptions {
   commands: CommandsManager = new CommandsManager(this)
   categories: CategoriesManager = new CategoriesManager(this)
 
+  cooldowns = new Map<string, Map<string, { left: number; ends: number }>>()
+
   constructor(options: CommandClientOptions) {
     super(options)
     this.prefix = options.prefix
@@ -250,116 +252,117 @@ export class CommandClient extends Client implements CommandClientOptions {
       guild: msg.guild
     }
 
-    // In these checks too, Command overrides Category if present
-    // Checks if Command is only for Owners
-    if (
-      (command.ownerOnly !== undefined || category === undefined
-        ? command.ownerOnly
-        : category.ownerOnly) === true &&
-      !this.owners.includes(msg.author.id)
-    )
-      return this.emit('commandOwnerOnly', ctx)
+    try {
+      // In these checks too, Command overrides Category if present
+      // Checks if Command is only for Owners
+      if (
+        (command.ownerOnly !== undefined || category === undefined
+          ? command.ownerOnly
+          : category.ownerOnly) === true &&
+        !this.owners.includes(msg.author.id)
+      )
+        return this.emit('commandOwnerOnly', ctx)
 
-    // Checks if Command is only for Guild
-    if (
-      (command.guildOnly !== undefined || category === undefined
-        ? command.guildOnly
-        : category.guildOnly) === true &&
-      msg.guild === undefined
-    )
-      return this.emit('commandGuildOnly', ctx)
+      // Checks if Command is only for Guild
+      if (
+        (command.guildOnly !== undefined || category === undefined
+          ? command.guildOnly
+          : category.guildOnly) === true &&
+        msg.guild === undefined
+      )
+        return this.emit('commandGuildOnly', ctx)
 
-    // Checks if Command is only for DMs
-    if (
-      (command.dmOnly !== undefined || category === undefined
-        ? command.dmOnly
-        : category.dmOnly) === true &&
-      msg.guild !== undefined
-    )
-      return this.emit('commandDmOnly', ctx)
+      // Checks if Command is only for DMs
+      if (
+        (command.dmOnly !== undefined || category === undefined
+          ? command.dmOnly
+          : category.dmOnly) === true &&
+        msg.guild !== undefined
+      )
+        return this.emit('commandDmOnly', ctx)
 
-    if (
-      command.nsfw === true &&
-      (msg.guild === undefined ||
-        (msg.channel as unknown as GuildTextBasedChannel).nsfw !== true)
-    )
-      return this.emit('commandNSFW', ctx)
+      if (
+        command.nsfw === true &&
+        (msg.guild === undefined ||
+          (msg.channel as unknown as GuildTextBasedChannel).nsfw !== true)
+      )
+        return this.emit('commandNSFW', ctx)
 
-    const allPermissions =
-      command.permissions !== undefined
-        ? command.permissions
-        : category?.permissions
+      const allPermissions =
+        command.permissions !== undefined
+          ? command.permissions
+          : category?.permissions
 
-    if (
-      (command.botPermissions !== undefined ||
-        category?.botPermissions !== undefined ||
-        allPermissions !== undefined) &&
-      msg.guild !== undefined
-    ) {
-      // TODO: Check Overwrites too
-      const me = await msg.guild.me()
-      const missing: string[] = []
-
-      let permissions =
-        command.botPermissions === undefined
-          ? category?.permissions
-          : command.botPermissions
-
-      if (permissions !== undefined) {
-        if (typeof permissions === 'string') permissions = [permissions]
-
-        if (allPermissions !== undefined)
-          permissions = [...new Set(...permissions, ...allPermissions)]
-
-        for (const perm of permissions) {
-          if (me.permissions.has(perm) === false) missing.push(perm)
-        }
-
-        if (missing.length !== 0)
-          return this.emit('commandBotMissingPermissions', ctx, missing)
-      }
-    }
-
-    if (
-      (command.userPermissions !== undefined ||
-        category?.userPermissions !== undefined ||
-        allPermissions !== undefined) &&
-      msg.guild !== undefined
-    ) {
-      let permissions =
-        command.userPermissions !== undefined
-          ? command.userPermissions
-          : category?.userPermissions
-
-      if (permissions !== undefined) {
-        if (typeof permissions === 'string') permissions = [permissions]
-
-        if (allPermissions !== undefined)
-          permissions = [...new Set(...permissions, ...allPermissions)]
-
+      if (
+        (command.botPermissions !== undefined ||
+          category?.botPermissions !== undefined ||
+          allPermissions !== undefined) &&
+        msg.guild !== undefined
+      ) {
+        // TODO: Check Overwrites too
+        const me = await msg.guild.me()
         const missing: string[] = []
 
-        for (const perm of permissions) {
-          const has = msg.member?.permissions.has(perm)
-          if (has !== true) missing.push(perm)
+        let permissions =
+          command.botPermissions === undefined
+            ? category?.permissions
+            : command.botPermissions
+
+        if (permissions !== undefined) {
+          if (typeof permissions === 'string') permissions = [permissions]
+
+          if (allPermissions !== undefined)
+            permissions = [...new Set(...permissions, ...allPermissions)]
+
+          for (const perm of permissions) {
+            if (me.permissions.has(perm) === false) missing.push(perm)
+          }
+
+          if (missing.length !== 0)
+            return this.emit('commandBotMissingPermissions', ctx, missing)
         }
-
-        if (missing.length !== 0)
-          return this.emit('commandUserMissingPermissions', ctx, missing)
       }
-    }
 
-    if (command.args !== undefined) {
-      if (typeof command.args === 'boolean' && parsed.args.length === 0)
-        return this.emit('commandMissingArgs', ctx)
-      else if (
-        typeof command.args === 'number' &&
-        parsed.args.length < command.args
-      )
-        this.emit('commandMissingArgs', ctx)
-    }
+      if (
+        (command.userPermissions !== undefined ||
+          category?.userPermissions !== undefined ||
+          allPermissions !== undefined) &&
+        msg.guild !== undefined
+      ) {
+        let permissions =
+          command.userPermissions !== undefined
+            ? command.userPermissions
+            : category?.userPermissions
 
-    try {
+        if (permissions !== undefined) {
+          if (typeof permissions === 'string') permissions = [permissions]
+
+          if (allPermissions !== undefined)
+            permissions = [...new Set(...permissions, ...allPermissions)]
+
+          const missing: string[] = []
+
+          for (const perm of permissions) {
+            const has = msg.member?.permissions.has(perm)
+            if (has !== true) missing.push(perm)
+          }
+
+          if (missing.length !== 0)
+            return this.emit('commandUserMissingPermissions', ctx, missing)
+        }
+      }
+
+      if (command.args !== undefined) {
+        if (
+          (typeof command.args === 'boolean' && parsed.args.length === 0) ||
+          (typeof command.args === 'number' &&
+            parsed.args.length < command.args)
+        ) {
+          await command.onMissingArgs(ctx)
+          return this.emit('commandMissingArgs', ctx)
+        }
+      }
+
       this.emit('commandUsed', ctx)
 
       const beforeExecute = await command.beforeExecute(ctx)
